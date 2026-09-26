@@ -22,6 +22,7 @@ function copyWasm(): Plugin {
 }
 
 export default defineConfig({
+  base: process.env.GITHUB_PAGES === "1" ? "/uchikomi/" : "/",
   plugins: [copyWasm()],
   optimizeDeps: {
     exclude: ["@mediapipe/tasks-vision"],

@@ -55,7 +55,9 @@ export class CameraTracker {
     this.times = [];
     this.slow = false;
     this.sawGpuError = false;
-    const vision = await FilesetResolver.forVisionTasks("/wasm");
+    const base = import.meta.env.BASE_URL;
+    const wasmRoot = `${base.endsWith("/") ? base : `${base}/`}wasm`;
+    const vision = await FilesetResolver.forVisionTasks(wasmRoot);
     const build = (delegate: "GPU" | "CPU") =>
       PoseLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: MODELS[model], delegate },
