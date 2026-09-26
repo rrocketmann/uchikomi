@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { compareAttempt, motionAmount } from "../src/pose/compare";
 import { extractFeatures } from "../src/pose/features";
 import { angleDeg, applySigns, chooseSigns, mirrorPose, wrap180 } from "../src/pose/geometry";
-import { advanceHold, arcContains, scorePhase } from "../src/pose/score";
+import { advanceHold, arcContains, coachLine, scorePhase } from "../src/pose/score";
 import { THROWS } from "../src/throws";
-import type { Features, XYZ } from "../src/types";
+import type { Features, Phase, XYZ } from "../src/types";
 
 function blank(): XYZ[] {
   return Array.from({ length: 33 }, () => ({ x: 0, y: 0, z: 0 }));
@@ -198,6 +198,43 @@ describe("throw phases", () => {
     expect(total(sweep, "de-ashi-barai", "sweep")).toBeGreaterThan(0.8);
     expect(total(ready, "de-ashi-barai", "sweep")).toBeLessThan(0.5);
     expect(total(uchi, "de-ashi-barai", "sweep")).toBeLessThan(total(sweep, "de-ashi-barai", "sweep"));
+  });
+});
+
+describe("coaching line", () => {
+  const phase: Phase = {
+    ...THROWS[0].phases[0],
+    passAt: 0.73,
+    intent: "Turn in and sit.",
+    targets: {
+      heading: {
+        min: 115,
+        max: -115,
+        slack: 36,
+        circular: true,
+        weight: 1.7,
+        off: "Turn your back toward the camera. Then the fit is in.",
+      },
+      sideLean: {
+        min: -18,
+        max: 18,
+        slack: 16,
+        weight: 0.45,
+        off: "Stack your shoulders over your hips.",
+      },
+    },
+  };
+
+  it("corrects the turn before a small lean", () => {
+    const scored = scorePhase({ heading: 0, sideLean: 25 }, phase);
+    expect(scored).not.toBeNull();
+    expect(coachLine(phase, scored!)).toBe("Turn your back toward the camera.");
+  });
+
+  it("stays quiet once the shape is in", () => {
+    const scored = scorePhase({ heading: 180, sideLean: 0 }, phase);
+    expect(scored).not.toBeNull();
+    expect(coachLine(phase, scored!)).toBe("Hold.");
   });
 });
 

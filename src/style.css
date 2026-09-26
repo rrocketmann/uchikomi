@@ -1,14 +1,13 @@
 :root {
   color-scheme: dark;
-  --bg: #121816;
-  --ink: #101410;
-  --board: #f2f3ef;
-  --muted: #8d9a93;
-  --line: #2a3832;
-  --good: #147a45;
+  --bg: #000;
+  --ink: #000;
+  --board: #fff;
+  --muted: #8a8a8a;
+  --line: #222;
   font-family: "Liberation Sans", "Nimbus Sans", "Helvetica Neue", Arial, sans-serif;
   background: var(--bg);
-  color: #f4f6f4;
+  color: #fff;
 }
 
 * { box-sizing: border-box; }
@@ -59,13 +58,13 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
   color: #fff;
 }
 
-.steps button[aria-pressed="true"] { background: #24312b; }
+.steps button[aria-pressed="true"] { background: #222; }
 
 .stage {
   position: relative;
   flex: none;
   height: 58vh;
-  background: #070908;
+  background: #000;
   overflow: hidden;
 }
 
@@ -100,7 +99,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
   letter-spacing: -0.05em;
 }
 
-#score.pass { color: var(--good); }
+#score.pass { color: #000; }
 
 #caption {
   margin: 0;
@@ -129,7 +128,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 
 #extra p { margin: 0 0 6px; }
 
-.scrub { width: min(100%, 480px); height: 32px; accent-color: #f4f6f4; }
+.scrub { width: min(100%, 480px); height: 32px; accent-color: #fff; }
 
 .quiet { color: var(--muted); }
 
@@ -139,7 +138,8 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
   display: flex;
   gap: 12px;
   align-items: center;
-  background: #243018;
+  background: #111;
+  color: #fff;
   padding: 10px 12px;
   font-size: 1.25rem;
 }

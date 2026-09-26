@@ -3,7 +3,7 @@ import { drawSkeleton } from "./draw";
 import { compareAttempt } from "./pose/compare";
 import { extractFeatures } from "./pose/features";
 import { mirrorPose, mirrorVisibility } from "./pose/geometry";
-import { advanceHold, scorePhase } from "./pose/score";
+import { advanceHold, coachLine, scorePhase } from "./pose/score";
 import type { AppState, Progress } from "./state";
 import { progressKey } from "./state";
 import { bodyVisible, CameraTracker, DEV_CAMERA_UPSIDE_DOWN } from "./tracker";
@@ -198,11 +198,7 @@ function tick(now: number): void {
         const scored = scorePhase(features, phase);
         const step = advanceHold(state.holdMs, scored?.total ?? null, dt, phase.passAt, phase.holdMs);
         state.holdMs = step.holdMs;
-        const rawCue = !scored
-          ? "I can't see enough of that pose to score it."
-          : scored.total >= phase.passAt
-            ? "That's the shape. Hold it."
-            : (scored.cues[0] ?? phase.intent);
+        const rawCue = scored ? coachLine(phase, scored) : "I can't see enough of that pose to score it.";
         state.cue = holdLine(rawCue, now);
         state.also = "";
         state.live = scored ? { ...scored, total: smoothShown(scored.total) } : null;

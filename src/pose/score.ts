@@ -78,15 +78,35 @@ export function scorePhase(features: Features, phase: Phase): PhaseScore | null 
   // cannot pass a reap, a sweep, or a turn that never happened.
   const keyMiss = parts.some((part) => (part.target.weight ?? 1) >= 1.5 && part.score < 0.25);
   if (keyMiss) total = Math.min(total, 0.42);
-  const miss = (part: PartScore) => (1 - part.score) * (part.target.weight ?? 1);
   const cues = parts
-    .filter((part) => part.score < 0.82)
+    .filter((part) => speaksAbout(part))
     .sort((a, b) => miss(b) - miss(a))
     .map((part) => cueFor(part))
     .filter((cue): cue is string => Boolean(cue))
     .slice(0, 2);
 
   return { total, parts, cues, coverage };
+}
+
+/** One line for the board: the miss that defines this phase, cut to the action. */
+export function coachLine(phase: Phase, result: PhaseScore): string {
+  const lead = [...result.parts].filter(speaksAbout).sort((a, b) => miss(b) - miss(a))[0];
+  if (!lead) return result.total >= phase.passAt ? "Hold." : phase.intent;
+  const text = cueFor(lead) ?? phase.intent;
+  const action = text.split(/(?<=[.!?])\s/)[0] ?? text;
+  if (lead.score >= 0.62) return `Almost. ${action}`;
+  return action;
+}
+
+/** Heavy features get a note while they are still off. Small ones only if they are clearly wrong. */
+function speaksAbout(part: PartScore): boolean {
+  const weight = part.target.weight ?? 1;
+  if (weight >= 1.5) return part.score < 0.9;
+  return part.score < 0.55;
+}
+
+function miss(part: PartScore): number {
+  return (1 - part.score) * (part.target.weight ?? 1);
 }
 
 function cueFor(part: PartScore): string | undefined {

@@ -40,10 +40,9 @@ function scoreOf(id: FeatureId, side: Side, phaseScore: PhaseScore | null): numb
 }
 
 function colorFor(score: number | null): string {
-  if (score === null) return "rgba(236, 231, 220, 0.9)";
+  if (score === null) return "rgba(255,255,255,0.92)";
   const t = Math.max(0, Math.min(1, score));
-  const light = 46 + t * 40;
-  return `hsl(160 8% ${light}%)`;
+  return `rgba(255,255,255,${0.28 + t * 0.72})`;
 }
 
 export function drawSkeleton(
@@ -75,11 +74,11 @@ export function drawSkeleton(
   for (const index of [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]) {
     const p = points[index];
     if (!p || (p.v ?? 1) < 0.35) continue;
-    ctx.fillStyle = "rgba(20, 18, 16, 0.9)";
+    ctx.fillStyle = "rgba(0,0,0,0.9)";
     ctx.beginPath();
     ctx.arc(p.x * width, p.y * height, limb * 0.85, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "rgba(236, 231, 220, 0.85)";
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
@@ -126,7 +125,7 @@ export function drawMannequin(
     return [px, py] as const;
   };
 
-  ctx.strokeStyle = "rgba(236, 231, 220, 0.18)";
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
   ctx.lineWidth = 1;
   const floor = project(0, minY + 8)[1];
   ctx.beginPath();
@@ -136,7 +135,7 @@ export function drawMannequin(
 
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = "rgba(232, 196, 164, 0.95)";
+  ctx.strokeStyle = "rgba(255,255,255,0.95)";
   ctx.lineWidth = Math.max(4, scale * 0.16);
   ctx.beginPath();
   let started = false;
@@ -153,7 +152,7 @@ export function drawMannequin(
   ctx.stroke();
 
   const head = project(stick.head[0], stick.head[1]);
-  ctx.fillStyle = "rgba(196, 69, 45, 0.95)";
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
   ctx.beginPath();
   ctx.arc(head[0], head[1], Math.max(7, scale * 0.22), 0, Math.PI * 2);
   ctx.fill();
