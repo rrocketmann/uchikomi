@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Uchikomi</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="shell" class="shell">
+      <header class="bar">
+        <div id="library" class="throws" aria-label="Throws"></div>
+      </header>
+      <div id="phases" class="steps" aria-label="Phases"></div>
+
+      <div id="stage" class="stage">
+        <div id="mirror" class="mirror" hidden>
+          <video id="video" playsinline muted></video>
+          <canvas id="skeleton"></canvas>
+        </div>
+      </div>
+
+      <div id="hud">
+        <p id="score">—</p>
+        <div class="say">
+          <p id="caption"></p>
+          <p id="cue"></p>
+          <p id="also"></p>
+        </div>
+      </div>
+
+      <div id="extra"></div>
+      <footer class="quiet">
+        <div class="side-switch" role="group" aria-label="Throwing side">
+          <button id="side-right" type="button" class="seg" aria-pressed="true">Right side</button>
+          <button id="side-left" type="button" class="seg">Left side</button>
+        </div>
+        <button id="sound" type="button" class="text">Sound on</button>
+        <button id="flip" type="button" class="text" hidden>Flip depth</button>
+        <p id="status" class="status"></p>
+      </footer>
+      <div id="banner" class="banner" hidden>
+        <span id="banner-text"></span>
+        <button id="use-lite" type="button" class="text" hidden>Lighter model</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
