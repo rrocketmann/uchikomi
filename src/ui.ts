@@ -1,3 +1,4 @@
+import { fillDocs } from "./docs";
 import type { AppState } from "./state";
 import { progressKey } from "./state";
 import { THROWS, throwById } from "./throws";
@@ -7,6 +8,7 @@ export type Handlers = {
   onThrow: (id: string) => void;
   onSide: (side: Side) => void;
   onPhase: (index: number) => void;
+  onDocs: (open: boolean) => void;
 };
 
 let structureKey = "";
@@ -27,6 +29,12 @@ export function mount(handlers: Handlers): { paint: (state: AppState) => void } 
   const right = must<HTMLButtonElement>("#side-right");
   const left = must<HTMLButtonElement>("#side-left");
   const flip = must<HTMLButtonElement>("#flip");
+  const flipX = must<HTMLButtonElement>("#flip-x");
+  const flipY = must<HTMLButtonElement>("#flip-y");
+  const stage = must("#stage");
+  const docs = must("#docs");
+  const docsOpen = must<HTMLButtonElement>("#docs-open");
+  docsOpen.addEventListener("click", () => handlers.onDocs(true));
 
   right.addEventListener("click", () => handlers.onSide("right"));
   left.addEventListener("click", () => handlers.onSide("left"));
@@ -35,8 +43,12 @@ export function mount(handlers: Handlers): { paint: (state: AppState) => void } 
     status.textContent = state.status;
     right.setAttribute("aria-pressed", String(state.side === "right"));
     left.setAttribute("aria-pressed", String(state.side === "left"));
+    flipX.setAttribute("aria-pressed", String(state.flipX));
+    flipY.setAttribute("aria-pressed", String(state.flipY));
     sound.textContent = state.sound ? "Sound on" : "Sound off";
     flip.hidden = !state.cameraOn;
+    stage.hidden = !state.cameraOn && state.mode !== "review";
+    docs.hidden = !state.docsOpen;
     banner.hidden = state.banner.length === 0;
     bannerText.textContent = state.banner;
     lite.hidden = !state.showLite;
@@ -44,11 +56,11 @@ export function mount(handlers: Handlers): { paint: (state: AppState) => void } 
     cue.textContent = state.cue;
     also.textContent = state.also;
 
-    const def = throwById(state.throwId);
-    const phase = def.phases[Math.min(state.phaseIndex, def.phases.length - 1)];
+    const def = state.throwId ? throwById(state.throwId) : null;
+    const phase = def?.phases[Math.min(state.phaseIndex, def.phases.length - 1)];
     const total = state.live?.total;
-    score.textContent = total === undefined ? "" : String(Math.round(total * 100));
-    score.classList.toggle("pass", total !== undefined && total >= phase.passAt);
+    score.textContent = total === undefined || !phase ? "" : String(Math.round(total * 100));
+    score.classList.toggle("pass", phase !== undefined && total !== undefined && total >= phase.passAt);
     also.hidden = true;
 
     const reviewPhase = state.review?.phaseOfSample[state.scrub] ?? "";
@@ -64,12 +76,16 @@ export function mount(handlers: Handlers): { paint: (state: AppState) => void } 
       state.review?.note ?? "",
       reviewPhase,
       state.samples.length,
+      state.docsOpen ? "docs" : "",
     ].join("|");
     if (key !== structureKey) {
       structureKey = key;
       renderThrows(library, state, handlers);
-      renderPhases(phases, state, def.phases, handlers);
-      renderExtra(extra, state, def.phases);
+      renderPhases(phases, state, def?.phases ?? [], handlers);
+      renderExtra(extra, state, def?.phases ?? []);
+      if (state.docsOpen) {
+        fillDocs(docs, state.throwId, state.side, handlers.onThrow, () => handlers.onDocs(false));
+      }
     }
   };
 

@@ -70,7 +70,103 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 
 .mirror, #skeleton, #video { position: absolute; }
 
-.mirror { inset: 0; transform: scaleX(-1); }
+.mirror { inset: 0; }
+
+.docs {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  height: 100vh;
+  overflow: auto;
+  background: var(--board);
+  color: var(--ink);
+  padding: 16px 18px 48px;
+}
+
+.docs h2 {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.docs .jp { font-weight: 650; }
+
+.docs .meta {
+  margin: 6px 0 0;
+  color: #444;
+  font-size: 0.92rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.docs p {
+  margin: 8px 0 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.docs .source {
+  margin-top: 16px;
+  color: #444;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.docs a { color: inherit; }
+
+.docs-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.docs-bar button,
+.doc-list button.pick {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: #111;
+  font-weight: 750;
+  text-align: left;
+}
+
+.docs-bar button {
+  min-height: 42px;
+  padding: 4px 0;
+}
+
+.doc-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 22px 28px;
+  margin-top: 16px;
+}
+
+.doc-list article { width: 100%; min-width: 0; }
+
+.doc-list article img {
+  display: block;
+  width: min(100%, 280px);
+  height: auto;
+  background: #fff;
+}
+
+.doc-list article.mirror img { transform: scaleX(-1); }
+
+.doc-list button.pick {
+  display: block;
+  margin-top: 8px;
+  padding: 0;
+  font-size: 1.35rem;
+}
+
+.steps:empty { display: none; }
 
 #video, #skeleton {
   inset: 0;
@@ -148,4 +244,6 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
   .bar { flex-direction: column; align-items: stretch; }
   .status { margin-left: 0; }
   #cue { font-size: 2.1rem; }
+  .stage { height: 42vh; }
+  .doc-list { grid-template-columns: 1fr; }
 }

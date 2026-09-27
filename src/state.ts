@@ -2,7 +2,7 @@ import type { Review } from "./pose/compare";
 import type { PhaseScore } from "./pose/score";
 import type { Features, Side } from "./types";
 
-export type Mode = "study" | "guided" | "countdown" | "record" | "review" | "summary";
+export type Mode = "pick" | "study" | "guided" | "countdown" | "record" | "review" | "summary";
 
 export type Sample = {
   t: number;
@@ -28,7 +28,12 @@ export type AppState = {
   banner: string;
   showLite: boolean;
   sound: boolean;
+  /** Horizontal mirror of the camera. Default is the opposite of the previous fixed mirror. */
+  flipX: boolean;
+  /** Vertical mirror of the camera. Default is the opposite of the previous upside-down correction. */
+  flipY: boolean;
   cameraOn: boolean;
+  docsOpen: boolean;
   countdown: number;
   samples: Sample[];
   review: Review | null;

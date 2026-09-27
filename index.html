@@ -21,16 +21,20 @@
       </div>
 
       <div id="hud">
-        <p id="score">—</p>
+        <p id="score"></p>
         <div class="say">
           <p id="caption"></p>
           <p id="cue"></p>
           <p id="also"></p>
         </div>
       </div>
-
       <div id="extra"></div>
       <footer class="quiet">
+        <button id="docs-open" type="button" class="text">Docs</button>
+        <div class="side-switch" role="group" aria-label="Camera orientation">
+          <button id="flip-y" type="button" class="seg" aria-pressed="false">Up/down</button>
+          <button id="flip-x" type="button" class="seg" aria-pressed="true">Left/right</button>
+        </div>
         <div class="side-switch" role="group" aria-label="Throwing side">
           <button id="side-right" type="button" class="seg" aria-pressed="true">Right side</button>
           <button id="side-left" type="button" class="seg">Left side</button>
@@ -44,6 +48,7 @@
         <button id="use-lite" type="button" class="text" hidden>Lighter model</button>
       </div>
     </div>
+    <div id="docs" class="docs" hidden></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

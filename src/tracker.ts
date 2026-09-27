@@ -1,13 +1,6 @@
 import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
-import { applySigns, chooseSigns, LM, type FrameSigns } from "./pose/geometry";
+import { applySigns, chooseSigns, LM, mirrorPose, mirrorVisibility, type FrameSigns } from "./pose/geometry";
 import type { XYZ } from "./types";
-
-/**
- * This machine's camera driver delivers frames upside down.
- * Dev-only: rotate a copy 180° before the pose model, and draw that copy.
- * Turn off when the camera is already upright.
- */
-export const DEV_CAMERA_UPSIDE_DOWN = true;
 
 const MODELS = {
   heavy: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task",
@@ -30,8 +23,14 @@ export class CameraTracker {
   model: ModelName | null = null;
   delegate: "GPU" | "CPU" | null = null;
   sawGpuError = false;
-  /** Upright copy of the camera frame when `DEV_CAMERA_UPSIDE_DOWN` is set. */
+  /** Camera frame after the up/down and left/right flips. Pose and the drawing use this copy. */
   preview: HTMLCanvasElement | null = null;
+  /**
+   * Opposite of the old default (180° rotation plus a horizontal mirror, which netted a vertical flip only).
+   * Left/right starts on, up/down starts off.
+   */
+  flipX = true;
+  flipY = false;
   signs: FrameSigns = { ySign: 1, zSign: 1 };
   calibrated = false;
   userFlipZ: 1 | -1 = 1;
@@ -117,13 +116,24 @@ export class CameraTracker {
     this.imageFilter = null;
   }
 
+  setOrientation(flipX: boolean, flipY: boolean): void {
+    if (this.flipX === flipX && this.flipY === flipY) return;
+    this.flipX = flipX;
+    this.flipY = flipY;
+    this.calibrated = false;
+    this.signs = { ySign: 1, zSign: 1 };
+    this.worldFilter = null;
+    this.imageFilter = null;
+  }
+
   detect(): Frame | null {
     if (!this.landmarker || this.video.readyState < 2) return null;
     let ts = performance.now();
     if (ts <= this.lastTs) ts = this.lastTs + 0.1;
     this.lastTs = ts;
     const started = performance.now();
-    const source = DEV_CAMERA_UPSIDE_DOWN ? this.uprightFrame() : this.video;
+    const source = this.orientedFrame();
+    if (!source) return null;
     let result;
     try {
       result = this.landmarker.detectForVideo(source, ts);
@@ -136,8 +146,13 @@ export class CameraTracker {
     const worldRaw = result.worldLandmarks[0];
     if (!image || !worldRaw || image.length < 33) return null;
 
-    const visibility = image.map((point) => point.visibility ?? 0);
-    const raw = worldRaw.map((point) => ({ x: point.x, y: point.y, z: point.z }));
+    const imageVisibility = image.map((point) => point.visibility ?? 0);
+    let visibility = imageVisibility.slice();
+    let raw = worldRaw.map((point) => ({ x: point.x, y: point.y, z: point.z }));
+    if (this.flipX !== this.flipY) {
+      raw = mirrorPose(raw);
+      visibility = mirrorVisibility(visibility);
+    }
     if (!this.calibrated && FACE.every((index) => visibility[index] > 0.55)) {
       this.signs = chooseSigns(raw);
       this.calibrated = true;
@@ -148,13 +163,14 @@ export class CameraTracker {
     const dt = this.filterAt === 0 ? 0 : Math.min(0.1, (ts - this.filterAt) / 1000);
     this.filterAt = ts;
     const world = this.smoothWorld(corrected, visibility, dt);
-    const points = this.smoothImage(image, visibility, dt);
+    const points = this.smoothImage(image, imageVisibility, dt);
     return { world, visibility, points };
   }
 
-  private uprightFrame(): HTMLCanvasElement {
+  private orientedFrame(): HTMLCanvasElement | null {
     const w = this.video.videoWidth;
     const h = this.video.videoHeight;
+    if (!w || !h) return null;
     if (!this.preview) this.preview = document.createElement("canvas");
     if (this.preview.width !== w || this.preview.height !== h) {
       this.preview.width = w;
@@ -162,7 +178,9 @@ export class CameraTracker {
     }
     const ctx = this.preview.getContext("2d");
     if (!ctx) return this.preview;
-    ctx.setTransform(-1, 0, 0, -1, w, h);
+    const sx = this.flipX ? -1 : 1;
+    const sy = this.flipY ? -1 : 1;
+    ctx.setTransform(sx, 0, 0, sy, this.flipX ? w : 0, this.flipY ? h : 0);
     ctx.drawImage(this.video, 0, 0);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     return this.preview;

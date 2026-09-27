@@ -6,7 +6,7 @@ import { mirrorPose, mirrorVisibility } from "./pose/geometry";
 import { advanceHold, coachLine, scorePhase } from "./pose/score";
 import type { AppState, Progress } from "./state";
 import { progressKey } from "./state";
-import { bodyVisible, CameraTracker, DEV_CAMERA_UPSIDE_DOWN } from "./tracker";
+import { bodyVisible, CameraTracker } from "./tracker";
 import { mount } from "./ui";
 import { throwById } from "./throws";
 
@@ -18,22 +18,25 @@ const mirror = must<HTMLElement>("#mirror");
 const tracker = new CameraTracker(video);
 
 const state: AppState = {
-  throwId: "o-goshi",
+  throwId: "",
   side: "right",
-  mode: "guided",
+  mode: "pick",
   phaseIndex: 0,
   drill: false,
   holdMs: 0,
   guidedScores: [],
   live: null,
-  cue: "",
+  cue: "Select a throw.",
   also: "",
   caption: "",
   status: "",
   banner: "",
   showLite: false,
   sound: true,
+  flipX: true,
+  flipY: false,
   cameraOn: false,
+  docsOpen: false,
   countdown: 0,
   samples: [],
   review: null,
@@ -56,7 +59,11 @@ const ui = mount({
     state.side = side;
     state.holdMs = 0;
   },
+  onDocs: (open) => {
+    state.docsOpen = open;
+  },
   onPhase: (index) => {
+    if (!state.throwId) return;
     const def = throwById(state.throwId);
     state.phaseIndex = clamp(index, 0, def.phases.length - 1);
     state.holdMs = 0;
@@ -75,6 +82,14 @@ must("#flip").addEventListener("click", () => {
   tracker.flipDepth();
   state.status = tracker.userFlipZ === -1 ? "Depth flipped" : "Depth at the model's default";
 });
+must("#flip-x").addEventListener("click", () => {
+  state.flipX = !state.flipX;
+  tracker.setOrientation(state.flipX, state.flipY);
+});
+must("#flip-y").addEventListener("click", () => {
+  state.flipY = !state.flipY;
+  tracker.setOrientation(state.flipX, state.flipY);
+});
 must("#use-lite").addEventListener("click", () => {
   void tracker.open("full").then(() => {
     state.banner = "";
@@ -84,7 +99,13 @@ must("#use-lite").addEventListener("click", () => {
 });
 
 window.addEventListener("keydown", (event) => {
-  if (event.target instanceof HTMLInputElement) return;
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+  if (/^[1-5]$/.test(event.key)) {
+    const item = ["o-goshi", "ippon-seoi-nage", "osoto-gari", "uchi-mata", "de-ashi-barai"][Number(event.key) - 1];
+    if (item) selectThrow(item);
+    return;
+  }
+  if (!state.throwId) return;
   const def = throwById(state.throwId);
   if (event.key === "ArrowRight") {
     state.phaseIndex = Math.min(def.phases.length - 1, state.phaseIndex + 1);
@@ -94,21 +115,36 @@ window.addEventListener("keydown", (event) => {
     state.phaseIndex = Math.max(0, state.phaseIndex - 1);
     state.holdMs = 0;
     state.studyPlaying = false;
-  } else if (/^[1-5]$/.test(event.key)) {
-    const item = ["o-goshi", "ippon-seoi-nage", "osoto-gari", "uchi-mata", "de-ashi-barai"][Number(event.key) - 1];
-    if (item) selectThrow(item);
   }
 });
 
 openShell();
 
 function openShell(): void {
-  const def = throwById(state.throwId);
-  state.cue = def.phases[0].intent;
-  state.caption = `${def.phases[0].name}  ·  ${def.phases[0].japanese}`;
+  idle();
   ensureLoop();
-  void beginGuided(true);
   paint();
+}
+
+function idle(): void {
+  state.throwId = "";
+  state.mode = "pick";
+  state.phaseIndex = 0;
+  state.holdMs = 0;
+  state.live = null;
+  state.guidedScores = [];
+  state.review = null;
+  state.samples = [];
+  state.drill = false;
+  state.studyPlaying = false;
+  state.countdown = 0;
+  state.cue = "Select a throw.";
+  state.caption = "";
+  state.also = "";
+  state.banner = "";
+  state.showLite = false;
+  state.status = "";
+  void showPreview();
 }
 
 function ensureLoop(): void {
@@ -118,6 +154,7 @@ function ensureLoop(): void {
 }
 
 function selectThrow(id: string): void {
+  state.docsOpen = false;
   state.throwId = id;
   state.phaseIndex = 0;
   state.holdMs = 0;
@@ -126,9 +163,10 @@ function selectThrow(id: string): void {
   state.drill = false;
   state.studyPlaying = false;
   state.mode = "guided";
+  state.guidedScores = throwById(id).phases.map(() => null);
   state.cue = holdLine(currentPhase().intent, performance.now());
   state.caption = phaseCaption();
-  if (!tracker.cameraOn) void beginGuided(true);
+  if (!tracker.cameraOn || !tracker.model) void beginGuided(true);
 }
 
 async function beginGuided(fromStart: boolean): Promise<void> {
@@ -151,11 +189,55 @@ async function beginGuided(fromStart: boolean): Promise<void> {
   state.caption = phaseCaption();
 }
 
+let opening: Promise<void> | null = null;
+
 async function ensureCamera(): Promise<void> {
-  if (!tracker.cameraOn) await tracker.startCamera();
-  state.cameraOn = true;
-  state.mode = "guided";
-  if (!tracker.model) await tracker.open("heavy");
+  if (tracker.cameraOn && tracker.model) {
+    state.cameraOn = true;
+    return;
+  }
+  if (!opening) {
+    opening = (async () => {
+      if (!tracker.cameraOn) await tracker.startCamera();
+      state.cameraOn = true;
+      if (!tracker.model) await tracker.open("heavy");
+    })().finally(() => {
+      opening = null;
+    });
+  }
+  await opening;
+}
+
+function watchModel(): void {
+  if (tracker.sawGpuError && tracker.model && !switchingDelegate) {
+    switchingDelegate = true;
+    const model = tracker.model;
+    void tracker.open(model, "CPU").then(() => {
+      state.status = `Pose landmarker · ${model} · CPU`;
+    }).finally(() => {
+      switchingDelegate = false;
+    });
+  }
+  if (tracker.slow && tracker.model === "full") {
+    state.banner = "The heavy model is falling behind on this machine.";
+    state.showLite = true;
+  }
+}
+
+async function showPreview(): Promise<void> {
+  try {
+    await ensureCamera();
+  } catch (error) {
+    if (state.mode !== "pick") return;
+    state.cameraOn = false;
+    state.status = error instanceof Error ? error.message : "Camera unavailable";
+    return;
+  }
+  if (state.mode === "pick") {
+    state.cue = "Select a throw.";
+    state.caption = "";
+    state.live = null;
+  }
 }
 
 function releaseCamera(): void {
@@ -171,6 +253,24 @@ function releaseCamera(): void {
 function tick(now: number): void {
   const dt = Math.min(80, now - lastNow);
   lastNow = now;
+  if (!state.throwId || state.mode === "pick") {
+    if (state.cameraOn) {
+      mirror.hidden = false;
+      video.style.visibility = "visible";
+      video.style.opacity = "0";
+      const frame = tracker.detect();
+      state.live = null;
+      state.cue = "Select a throw.";
+      state.caption = "";
+      paintCamera(frame ? frame.points : null);
+      watchModel();
+    } else {
+      mirror.hidden = true;
+    }
+    paint();
+    requestAnimationFrame(tick);
+    return;
+  }
   const phase = currentPhase();
 
   if (state.mode === "review") {
@@ -178,7 +278,7 @@ function tick(now: number): void {
   } else if (state.cameraOn) {
     mirror.hidden = false;
     video.style.visibility = "visible";
-    video.style.opacity = DEV_CAMERA_UPSIDE_DOWN ? "0" : "1";
+    video.style.opacity = "0";
     const frame = tracker.detect();
     if (!frame) {
       state.caption = "Looking for you…";
@@ -235,19 +335,7 @@ function tick(now: number): void {
       }
       paintCamera(frame.points);
     }
-    if (tracker.sawGpuError && tracker.model && !switchingDelegate) {
-      switchingDelegate = true;
-      const model = tracker.model;
-      void tracker.open(model, "CPU").then(() => {
-        state.status = `Pose landmarker · ${model} · CPU`;
-      }).finally(() => {
-        switchingDelegate = false;
-      });
-    }
-    if (tracker.slow && tracker.model === "full") {
-      state.banner = "The heavy model is falling behind on this machine.";
-      state.showLite = true;
-    }
+    watchModel();
   }
 
   paint();
@@ -277,13 +365,8 @@ function finishGuided(): void {
   const scores = state.guidedScores.filter((score): score is number => score !== null);
   const overall = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
   remember("guided", overall);
-  state.mode = "guided";
-  state.phaseIndex = 0;
-  state.holdMs = 0;
-  state.guidedScores = throwById(state.throwId).phases.map(() => null);
-  state.cue = holdLine(currentPhase().intent, performance.now());
-  state.caption = phaseCaption();
   if (state.sound) chime(660, 0.16, 0.05);
+  idle();
 }
 
 let cueHeld = "";
@@ -326,7 +409,7 @@ function paintCamera(points: { x: number; y: number; v: number }[] | null): void
   const frame = videoFrame();
   if (!ctx || !frame) return;
   ctx.setTransform(frame.scaleX, 0, 0, frame.scaleY, frame.offsetX, frame.offsetY);
-  const underlay = DEV_CAMERA_UPSIDE_DOWN ? tracker.preview ?? undefined : undefined;
+  const underlay = tracker.preview ?? undefined;
   if (!points) {
     ctx.clearRect(0, 0, video.videoWidth, video.videoHeight);
     if (underlay) ctx.drawImage(underlay, 0, 0, video.videoWidth, video.videoHeight);
